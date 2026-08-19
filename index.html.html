@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zé Barbeiro — Agendamento</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,500;0,600;0,700;1,500&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0a0b0d;
+    --bg-raised: #131519;
+    --bg-card: #15171c;
+    --gold: #c9a227;
+    --gold-light: #e8cd6a;
+    --gold-dim: rgba(201,162,39,0.28);
+    --blue: #3d6bc4;
+    --blue-light: #7fa8ee;
+    --blue-dim: rgba(61,107,196,0.28);
+    --text: #f3efe4;
+    --text-muted: #9a9a9f;
+    --text-faint: #5c5d62;
+    --line: rgba(255,255,255,0.08);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Manrope', sans-serif;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{ background:var(--gold-dim); color:var(--gold-light); }
+
+  h1,h2,h3, .display{
+    font-family:'Bodoni Moda', serif;
+    font-weight:600;
+    letter-spacing:0.01em;
+  }
+  .mono{ font-family:'JetBrains Mono', monospace; }
+
+  a{ color:inherit; }
+
+  .wrap{ max-width:1040px; margin:0 auto; padding:0 28px; }
+
+  /* -------- stripe divider (barber pole, understated) -------- */
+  .stripe{
+    height:5px;
+    width:100%;
+    background: repeating-linear-gradient(
+      -45deg,
+      var(--gold) 0px, var(--gold) 14px,
+      var(--blue) 14px, var(--blue) 28px,
+      var(--bg) 28px, var(--bg) 30px
+    );
+    background-size: 200% 100%;
+    animation: slide 6s linear infinite;
+    opacity:0.85;
+  }
+  @keyframes slide{ from{background-position:0 0;} to{background-position:-56px 0;} }
+  @media (prefers-reduced-motion: reduce){ .stripe{ animation:none; } }
+
+  /* -------- header -------- */
+  header{
+    position:sticky; top:0; z-index:50;
+    background:rgba(10,11,13,0.9);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);
+  }
+  .header-inner{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 28px;
+    max-width:1040px; margin:0 auto;
+  }
+  .brand{
+    display:flex; align-items:baseline; gap:10px;
+  }
+  .brand .display{ font-size:20px; }
+  .brand .sub{ font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold-light); }
+  nav a{
+    font-size:13px; color:var(--text-muted); text-decoration:none; margin-left:28px;
+    transition:color .2s;
+  }
+  nav a:hover{ color:var(--gold-light); }
+  .btn-ghost{
+    border:1px solid var(--gold-dim);
+    padding:9px 18px;
+    border-radius:2px;
+    font-size:13px;
+    background:transparent;
+    color:var(--gold-light);
+    cursor:pointer;
+    transition:all .2s;
+  }
+  .btn-ghost:hover{ background:var(--gold-dim); border-color:var(--gold); }
+
+  /* -------- hero -------- */
+  .hero{
+    padding:88px 28px 64px;
+    text-align:center;
+    position:relative;
+    overflow:hidden;
+  }
+  .hero-art{
+    position:absolute;
+    top:50%; right:-6%;
+    transform:translateY(-50%) rotate(-18deg);
+    width:560px; max-width:60vw;
+    opacity:0.16;
+    pointer-events:none;
+    z-index:0;
+  }
+  .hero-art path, .hero-art line, .hero-art circle{ vector-effect:non-scaling-stroke; }
+  .hero > *:not(.hero-art){ position:relative; z-index:1; }
+  @media (max-width:760px){ .hero-art{ opacity:0.10; width:420px; } }
+
+  #agendar{ position:relative; }
+  #agendar > *:not(.section-art){ position:relative; z-index:1; }
+  .section-art{ position:absolute; z-index:0; pointer-events:none; opacity:0.13; }
+  .section-art path, .section-art line, .section-art circle, .section-art rect{ vector-effect:non-scaling-stroke; }
+  @media (max-width:760px){ .section-art{ display:none; } }
+
+  footer{ position:relative; overflow:hidden; }
+  footer > *{ position:relative; z-index:1; }
+
+  /* -------- owner panel -------- */
+  .owner-overlay{
+    display:none;
+    position:fixed; inset:0; z-index:200;
+    background:rgba(0,0,0,0.72);
+    align-items:center; justify-content:center;
+    padding:20px;
+  }
+  .owner-overlay.active{ display:flex; }
+  .owner-panel{
+    background:var(--bg-card);
+    border:1px solid var(--gold-dim);
+    border-radius:4px;
+    width:100%; max-width:520px;
+    max-height:85vh;
+    overflow-y:auto;
+    padding:24px;
+  }
+  .owner-panel-head{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:18px;
+  }
+  .owner-close{
+    background:transparent; border:1px solid var(--line); color:var(--text-muted);
+    width:28px; height:28px; border-radius:2px; cursor:pointer; font-size:13px;
+  }
+  .owner-close:hover{ border-color:var(--text-muted); }
+  .owner-row{
+    display:flex; justify-content:space-between; align-items:center; gap:12px;
+    padding:12px 0; border-bottom:1px solid var(--line);
+  }
+  .owner-row:last-child{ border-bottom:none; }
+  .owner-row .time{ font-family:'JetBrains Mono', monospace; font-size:14px; color:var(--gold-light); min-width:52px; }
+  .owner-row .info{ font-size:13px; flex:1; }
+  .owner-row .info .name{ font-weight:600; }
+  .owner-row .info .sub{ color:var(--text-muted); font-size:12px; margin-top:2px; }
+  .owner-row .badge{
+    font-size:10px; text-transform:uppercase; letter-spacing:0.06em;
+    padding:2px 7px; border-radius:2px; border:1px solid var(--blue-dim); color:var(--blue-light);
+  }
+  .owner-row .badge.block{ border-color:var(--gold-dim); color:var(--gold-light); }
+  .owner-empty{ font-size:13px; color:var(--text-faint); padding:16px 0; text-align:center; }
+  .btn-release{
+    background:transparent; border:1px solid rgba(224,122,122,0.4); color:#e07a7a;
+    padding:7px 12px; border-radius:2px; cursor:pointer; font-size:12px; white-space:nowrap;
+  }
+  .btn-release:hover{ background:rgba(224,122,122,0.12); }
+
+  .hero .eyebrow{
+    font-size:12px; letter-spacing:0.24em; text-transform:uppercase;
+    color:var(--blue-light);
+    margin-bottom:20px;
+  }
+  .hero h1{
+    font-size:clamp(40px, 7vw, 72px);
+    line-height:1.05;
+    margin-bottom:20px;
+  }
+  .hero h1 em{
+    font-style:italic;
+    background:linear-gradient(100deg, var(--gold-light), var(--blue-light));
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+  }
+  .hero p{
+    color:var(--text-muted);
+    font-size:17px;
+    max-width:520px;
+    margin:0 auto 36px;
+  }
+  .btn-primary{
+    display:inline-flex; align-items:center; gap:10px;
+    background:var(--gold);
+    color:#1a1503;
+    font-weight:700;
+    font-size:15px;
+    padding:15px 30px;
+    border:none;
+    border-radius:2px;
+    cursor:pointer;
+    transition:transform .15s, background .2s;
+  }
+  .btn-primary:hover{ background:var(--gold-light); transform:translateY(-1px); }
+  .btn-primary:active{ transform:translateY(0); }
+
+  /* -------- section shared -------- */
+  section{ padding:72px 0; }
+  .section-head{ margin-bottom:40px; }
+  .section-head .eyebrow{
+    font-size:12px; letter-spacing:0.2em; text-transform:uppercase; color:var(--blue-light); margin-bottom:10px;
+  }
+  .section-head h2{ font-size:34px; }
+  .section-head p{ color:var(--text-muted); margin-top:10px; max-width:480px; }
+
+  /* -------- ticket cards (signature element) -------- */
+  .tickets{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));
+    gap:20px;
+  }
+  .ticket{
+    position:relative;
+    background:var(--bg-card);
+    border:1px solid var(--line);
+    border-top:3px solid var(--gold);
+    border-radius:3px;
+    padding:24px 22px 20px;
+    cursor:pointer;
+    transition:border-color .2s, transform .2s, background .2s;
+    overflow:hidden;
+  }
+  .ticket::after{
+    content:"";
+    position:absolute; left:0; right:0; bottom:44px;
+    height:0;
+    border-bottom:1px dashed rgba(255,255,255,0.14);
+  }
+  .ticket:hover{ transform:translateY(-3px); border-color:var(--gold-dim); }
+  .ticket.selected{
+    border-top-color:var(--blue);
+    background:linear-gradient(180deg, rgba(61,107,196,0.10), var(--bg-card) 40%);
+    box-shadow: inset 0 0 0 1px var(--blue-dim);
+  }
+  .ticket .num{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    color:var(--text-faint);
+    letter-spacing:0.08em;
+  }
+  .ticket h3{
+    font-size:19px;
+    margin:10px 0 8px;
+    font-weight:600;
+  }
+  .ticket .desc{ font-size:13px; color:var(--text-muted); margin-bottom:26px; min-height:34px; }
+  .ticket .meta{
+    display:flex; justify-content:space-between; align-items:baseline;
+    padding-top:14px;
+  }
+  .ticket .price{ font-family:'Bodoni Moda', serif; font-size:22px; color:var(--gold-light); }
+  .ticket .dur{ font-size:12px; color:var(--text-faint); }
+  .ticket .check{
+    position:absolute; top:16px; right:16px;
+    width:18px; height:18px;
+    border-radius:50%;
+    border:1px solid var(--text-faint);
+    display:flex; align-items:center; justify-content:center;
+    font-size:11px;
+    color:transparent;
+  }
+  .ticket.selected .check{ border-color:var(--blue-light); color:var(--blue-light); background:rgba(61,107,196,0.15); }
+
+  /* -------- barbers -------- */
+  .barbers{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));
+    gap:16px;
+  }
+  .barber-card{
+    display:flex; align-items:center; gap:14px;
+    background:var(--bg-card);
+    border:1px solid var(--line);
+    border-radius:3px;
+    padding:16px;
+    cursor:pointer;
+    transition:all .2s;
+  }
+  .barber-card:hover{ border-color:var(--gold-dim); }
+  .barber-card.selected{ border-color:var(--blue); box-shadow:inset 0 0 0 1px var(--blue-dim); background:linear-gradient(180deg, rgba(61,107,196,0.10), var(--bg-card) 60%); }
+  .barber-avatar{
+    width:46px; height:46px; border-radius:50%; flex:0 0 auto;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Bodoni Moda', serif; font-size:16px; font-weight:600;
+    background:linear-gradient(135deg, var(--gold-dim), var(--blue-dim));
+    color:var(--gold-light);
+    border:1px solid var(--gold-dim);
+  }
+  .barber-card.selected .barber-avatar{ color:var(--blue-light); border-color:var(--blue-light); }
+  .barber-name{ font-weight:600; font-size:14px; }
+  .barber-role{ font-size:12px; color:var(--text-muted); margin-top:2px; }
+
+  /* -------- calendar / days -------- */
+  .days{
+    display:flex; gap:10px; overflow-x:auto; padding-bottom:8px; margin-bottom:32px;
+  }
+  .day{
+    flex:0 0 auto;
+    min-width:76px;
+    text-align:center;
+    padding:14px 8px;
+    background:var(--bg-card);
+    border:1px solid var(--line);
+    border-radius:3px;
+    cursor:pointer;
+    transition:all .2s;
+  }
+  .day .dow{ font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-faint); }
+  .day .dom{ font-family:'Bodoni Moda', serif; font-size:22px; margin:4px 0; }
+  .day .mon{ font-size:10px; color:var(--text-muted); }
+  .day:hover{ border-color:var(--gold-dim); }
+  .day.selected{ border-color:var(--gold); background:linear-gradient(180deg, rgba(201,162,39,0.12), var(--bg-card)); }
+  .day.selected .dow{ color:var(--gold-light); }
+  .day.closed{ opacity:0.35; cursor:not-allowed; }
+
+  .slots{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(96px, 1fr));
+    gap:10px;
+  }
+  .slot{
+    padding:12px 6px;
+    text-align:center;
+    font-family:'JetBrains Mono', monospace;
+    font-size:14px;
+    background:var(--bg-card);
+    border:1px solid var(--line);
+    border-radius:2px;
+    cursor:pointer;
+    transition:all .2s;
+    color:var(--text);
+  }
+  .slot:hover:not(.taken){ border-color:var(--blue-light); color:var(--blue-light); }
+  .slot.selected{ background:var(--blue); border-color:var(--blue); color:#fff; }
+  .slot.taken{
+    color:var(--text-faint);
+    text-decoration:line-through;
+    cursor:not-allowed;
+    opacity:0.4;
+  }
+
+  /* -------- form -------- */
+  .form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; max-width:520px; }
+  .form-grid .full{ grid-column:1 / -1; }
+  label{ display:block; font-size:12px; color:var(--text-muted); margin-bottom:6px; letter-spacing:0.02em; }
+  input{
+    width:100%;
+    background:var(--bg-raised);
+    border:1px solid var(--line);
+    color:var(--text);
+    padding:12px 14px;
+    border-radius:2px;
+    font-family:'Manrope', sans-serif;
+    font-size:14px;
+    transition:border-color .2s;
+  }
+  input:focus{ outline:none; border-color:var(--gold); }
+  input::placeholder{ color:var(--text-faint); }
+  .error-msg{ font-size:12px; color:#e07a7a; margin-top:6px; display:none; }
+
+  /* -------- summary / confirm ticket -------- */
+  .summary-ticket{
+    max-width:420px;
+    background:var(--bg-card);
+    border:1px solid var(--gold-dim);
+    border-radius:4px;
+    padding:0;
+    overflow:hidden;
+  }
+  .summary-ticket .st-head{
+    padding:20px 24px;
+    border-bottom:1px dashed rgba(255,255,255,0.14);
+  }
+  .summary-ticket .st-head .eyebrow{ font-size:11px; letter-spacing:0.2em; text-transform:uppercase; color:var(--blue-light); margin-bottom:6px; }
+  .summary-ticket .st-head h3{ font-size:20px; }
+  .summary-ticket .st-body{ padding:18px 24px; }
+  .st-row{ display:flex; justify-content:space-between; font-size:14px; padding:8px 0; border-bottom:1px solid var(--line); }
+  .st-row:last-child{ border-bottom:none; }
+  .st-row .k{ color:var(--text-muted); }
+  .st-row .v{ font-weight:600; }
+  .barcode{
+    height:34px;
+    margin:18px 24px 22px;
+    background: repeating-linear-gradient(90deg, var(--text) 0px, var(--text) 2px, transparent 2px, transparent 5px, var(--gold) 5px, var(--gold) 6px, transparent 6px, transparent 10px);
+    opacity:0.85;
+  }
+
+  /* -------- steps nav -------- */
+  .steps{
+    display:flex; gap:0; margin-bottom:36px; border:1px solid var(--line); border-radius:3px; overflow:hidden;
+  }
+  .step-tab{
+    flex:1;
+    padding:14px 10px;
+    text-align:center;
+    font-size:12px;
+    letter-spacing:0.04em;
+    text-transform:uppercase;
+    color:var(--text-faint);
+    background:var(--bg-raised);
+    border-right:1px solid var(--line);
+    position:relative;
+  }
+  .step-tab:last-child{ border-right:none; }
+  .step-tab .n{ font-family:'JetBrains Mono', monospace; margin-right:6px; }
+  .step-tab.active{ color:var(--gold-light); background:linear-gradient(180deg, rgba(201,162,39,0.08), transparent); }
+  .step-tab.done{ color:var(--blue-light); }
+
+  .panel{ display:none; }
+  .panel.active{ display:block; animation:fade .3s ease; }
+  @keyframes fade{ from{ opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+
+  .nav-buttons{ display:flex; justify-content:space-between; margin-top:32px; max-width:640px; }
+  .btn-back{
+    background:transparent; border:1px solid var(--line); color:var(--text-muted);
+    padding:12px 22px; border-radius:2px; cursor:pointer; font-size:14px;
+  }
+  .btn-back:hover{ border-color:var(--text-muted); }
+  .btn-next{
+    background:var(--blue); color:#fff; border:none;
+    padding:12px 26px; border-radius:2px; cursor:pointer; font-size:14px; font-weight:600;
+  }
+  .btn-next:hover{ background:var(--blue-light); }
+  .btn-next:disabled{ opacity:0.35; cursor:not-allowed; }
+
+  .confirmed-banner{
+    display:none;
+    text-align:center;
+    padding:60px 20px;
+  }
+  .confirmed-banner.active{ display:block; }
+  .confirmed-banner .icon{ font-size:44px; color:var(--gold-light); margin-bottom:16px; }
+  .confirmed-banner h2{ font-size:30px; margin-bottom:10px; }
+  .confirmed-banner p{ color:var(--text-muted); margin-bottom:30px; }
+
+  footer{
+    border-top:1px solid var(--line);
+    padding:36px 28px;
+    text-align:center;
+    color:var(--text-faint);
+    font-size:12px;
+  }
+
+  @media (max-width: 640px){
+    nav{ display:none; }
+    .form-grid{ grid-template-columns:1fr; }
+    .hero{ padding:64px 20px 48px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="brand">
+      <span class="display">Zé Barbeiro</span>
+      <span class="sub">Desde&nbsp;2016</span>
+    </div>
+    <nav>
+      <a href="#agendar">Agendar</a>
+    </nav>
+    <button class="btn-ghost" onclick="document.getElementById('agendar').scrollIntoView()">Agendar horário</button>
+  </div>
+  <div class="stripe"></div>
+</header>
+
+<section class="hero">
+  <svg class="hero-art" viewBox="0 0 400 220" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <g fill="none" stroke="url(#razorGrad)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M40 120 C 60 95, 95 78, 140 72 C 190 65, 235 68, 268 82 L 340 108 L 336 122 L 264 100 C 232 90, 190 88, 145 94 C 100 100, 68 116, 48 138 Z" />
+      <path d="M340 108 L 372 96" />
+      <path d="M48 138 C 34 148, 24 150, 14 146" />
+      <line x1="150" y1="90" x2="255" y2="112" stroke-width="1.4" stroke="url(#razorGradThin)" opacity="0.9" />
+    </g>
+    <defs>
+      <linearGradient id="razorGrad" x1="0" y1="0" x2="400" y2="220" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stop-color="#e8cd6a"/>
+        <stop offset="100%" stop-color="#7fa8ee"/>
+      </linearGradient>
+      <linearGradient id="razorGradThin" x1="0" y1="0" x2="400" y2="0" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stop-color="#7fa8ee"/>
+        <stop offset="100%" stop-color="#e8cd6a"/>
+      </linearGradient>
+    </defs>
+  </svg>
+  <svg class="hero-art" viewBox="0 0 200 200" style="left:-2%; right:auto; top:62%; width:220px; opacity:0.16; transform:translateY(-50%) rotate(18deg);" aria-hidden="true">
+    <g fill="none" stroke="url(#scissorsGradHero)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="55" cy="150" r="20"/>
+      <circle cx="145" cy="150" r="20"/>
+      <path d="M55 150 L135 55"/>
+      <path d="M145 150 L65 55"/>
+      <circle cx="100" cy="102" r="5" fill="url(#scissorsGradHero)" stroke="none"/>
+    </g>
+    <defs>
+      <linearGradient id="scissorsGradHero" x1="0" y1="0" x2="200" y2="200" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stop-color="#7fa8ee"/>
+        <stop offset="100%" stop-color="#e8cd6a"/>
+      </linearGradient>
+    </defs>
+  </svg>
+  <svg class="hero-art" viewBox="0 0 160 140" style="left:50%; right:auto; top:-6%; width:120px; opacity:0.14; transform:translateX(180px) rotate(-10deg);" aria-hidden="true">
+    <g stroke="url(#combGradHero)" stroke-width="4" stroke-linecap="round" fill="none">
+      <rect x="10" y="10" width="140" height="16" rx="3"/>
+      <line x1="20" y1="26" x2="20" y2="120"/>
+      <line x1="33" y1="26" x2="33" y2="120"/>
+      <line x1="46" y1="26" x2="46" y2="120"/>
+      <line x1="59" y1="26" x2="59" y2="120"/>
+      <line x1="72" y1="26" x2="72" y2="120"/>
+      <line x1="85" y1="26" x2="85" y2="120"/>
+      <line x1="98" y1="26" x2="98" y2="120"/>
+      <line x1="111" y1="26" x2="111" y2="120"/>
+      <line x1="124" y1="26" x2="124" y2="120"/>
+      <line x1="137" y1="26" x2="137" y2="120"/>
+    </g>
+    <defs>
+      <linearGradient id="combGradHero" x1="0" y1="0" x2="160" y2="140" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stop-color="#e8cd6a"/>
+        <stop offset="100%" stop-color="#7fa8ee"/>
+      </linearGradient>
+    </defs>
+  </svg>
+  <div class="eyebrow">Corte · Barba · Sobrancelha</div>
+  <h1>Precisão na navalha,<br><em>tradição</em> no atendimento</h1>
+  <p>Escolha o serviço, veja os horários livres e garanta sua vaga em menos de um minuto.</p>
+  <button class="btn-primary" onclick="document.getElementById('agendar').scrollIntoView()">Ver horários disponíveis →</button>
+</section>
+
+<div class="wrap">
+
+<section id="agendar">
+  <svg class="section-art" viewBox="0 0 200 200" style="left:-30px; top:12%; width:260px; transform:rotate(-14deg);" aria-hidden="true">
+    <g fill="none" stroke="url(#scissorsGrad)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="55" cy="150" r="20"/>
+      <circle cx="145" cy="150" r="20"/>
+      <path d="M55 150 L135 55"/>
+      <path d="M145 150 L65 55"/>
+      <circle cx="100" cy="102" r="5" fill="url(#scissorsGrad)" stroke="none"/>
+    </g>
+    <defs>
+      <linearGradient id="scissorsGrad" x1="0" y1="0" x2="200" y2="200" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stop-color="#e8cd6a"/>
+        <stop offset="100%" stop-color="#7fa8ee"/>
+      </linearGradient>
+    </defs>
+  </svg>
+  <svg class="section-art" viewBox="0 0 160 140" style="right:-10px; bottom:6%; width:190px; transform:rotate(10deg);" aria-hidden="true">
+    <g stroke="url(#combGrad)" stroke-width="4" stroke-linecap="round" fill="none">
+      <rect x="10" y="10" width="140" height="16" rx="3"/>
+      <line x1="20" y1="26" x2="20" y2="120"/>
+      <line x1="33" y1="26" x2="33" y2="120"/>
+      <line x1="46" y1="26" x2="46" y2="120"/>
+      <line x1="59" y1="26" x2="59" y2="120"/>
+      <line x1="72" y1="26" x2="72" y2="120"/>
+      <line x1="85" y1="26" x2="85" y2="120"/>
+      <line x1="98" y1="26" x2="98" y2="120"/>
+      <line x1="111" y1="26" x2="111" y2="120"/>
+      <line x1="124" y1="26" x2="124" y2="120"/>
+      <line x1="137" y1="26" x2="137" y2="120"/>
+    </g>
+    <defs>
+      <linearGradient id="combGrad" x1="0" y1="0" x2="160" y2="140" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stop-color="#7fa8ee"/>
+        <stop offset="100%" stop-color="#e8cd6a"/>
+      </linearGradient>
+    </defs>
+  </svg>
+  <div class="section-head">
+    <div class="eyebrow">Sua ficha</div>
+    <h2>Agendamento</h2>
+    <p>Preencha as quatro etapas abaixo — como preencher uma ficha de fila na barbearia.</p>
+  </div>
+
+  <div class="steps">
+    <div class="step-tab active" data-step="1"><span class="n">01</span>Serviço</div>
+    <div class="step-tab" data-step="2"><span class="n">02</span>Barbeiro</div>
+    <div class="step-tab" data-step="3"><span class="n">03</span>Data</div>
+    <div class="step-tab" data-step="4"><span class="n">04</span>Horário</div>
+    <div class="step-tab" data-step="5"><span class="n">05</span>Seus dados</div>
+  </div>
+
+  <div id="bookingPanels">
+
+    <div class="panel active" data-panel="1">
+      <p style="color:var(--text-muted); font-size:14px; margin-bottom:18px;">Escolha o serviço para começar sua ficha.</p>
+      <div class="tickets" id="ticketsGridStep"></div>
+    </div>
+
+    <div class="panel" data-panel="2">
+      <p style="color:var(--text-muted); font-size:14px; margin-bottom:18px;">Escolha quem vai te atender.</p>
+      <div class="barbers" id="barbersGrid"></div>
+    </div>
+
+    <div class="panel" data-panel="3">
+      <p style="color:var(--text-muted); font-size:14px; margin-bottom:18px;">A barbearia funciona de terça a domingo.</p>
+      <div class="days" id="daysRow"></div>
+    </div>
+
+    <div class="panel" data-panel="4">
+      <p style="color:var(--text-muted); font-size:14px; margin-bottom:18px;">Horários livres para <span id="chosenDayLabel" class="mono" style="color:var(--gold-light);"></span></p>
+      <div class="slots" id="slotsGrid"></div>
+    </div>
+
+    <div class="panel" data-panel="5">
+      <div class="form-grid">
+        <div class="full">
+          <label for="fName">Nome completo</label>
+          <input id="fName" type="text" placeholder="Seu nome">
+          <div class="error-msg" id="errName">Digite seu nome.</div>
+        </div>
+        <div class="full">
+          <label for="fPhone">Telefone / WhatsApp</label>
+          <input id="fPhone" type="tel" placeholder="(00) 00000-0000">
+          <div class="error-msg" id="errPhone">Digite um telefone válido.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="nav-buttons" id="navButtons">
+    <button class="btn-back" id="btnBack" style="visibility:hidden;">← Voltar</button>
+    <button class="btn-next" id="btnNext" disabled>Continuar →</button>
+  </div>
+
+  <div class="confirmed-banner" id="confirmedBanner">
+    <div class="icon">✓</div>
+    <h2>Horário reservado</h2>
+    <p>Sua ficha foi gerada — chegue com 5 minutos de antecedência.</p>
+    <div class="summary-ticket" style="margin:0 auto;">
+      <div class="st-head">
+        <div class="eyebrow">Ficha de agendamento</div>
+        <h3 id="ticketService">—</h3>
+      </div>
+      <div class="st-body">
+        <div class="st-row"><span class="k">Cliente</span><span class="v" id="ticketName">—</span></div>
+        <div class="st-row"><span class="k">Barbeiro</span><span class="v" id="ticketBarber">—</span></div>
+        <div class="st-row"><span class="k">Data</span><span class="v" id="ticketDate">—</span></div>
+        <div class="st-row"><span class="k">Horário</span><span class="v" id="ticketTime">—</span></div>
+        <div class="st-row"><span class="k">Valor</span><span class="v" id="ticketPrice">—</span></div>
+      </div>
+      <div class="barcode"></div>
+    </div>
+    <div style="margin-top:28px; display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+      <a class="btn-primary" id="whatsappLink" href="#" target="_blank" rel="noopener" style="text-decoration:none; display:inline-flex;">Acompanhar pelo WhatsApp →</a>
+      <button class="btn-ghost" onclick="resetBooking()">Fazer novo agendamento</button>
+    </div>
+  </div>
+
+</section>
+
+</div>
+
+<footer>
+  <svg class="section-art" viewBox="0 0 100 200" style="left:50%; top:-40px; width:70px; transform:translateX(-50%) rotate(0deg);" aria-hidden="true">
+    <g fill="none" stroke="url(#poleGrad)" stroke-width="5" stroke-linecap="round">
+      <rect x="30" y="10" width="40" height="150" rx="20"/>
+      <path d="M30 25 L70 55" />
+      <path d="M30 55 L70 85" />
+      <path d="M30 85 L70 115" />
+      <path d="M30 115 L70 145" />
+    </g>
+    <defs>
+      <linearGradient id="poleGrad" x1="0" y1="0" x2="100" y2="200" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stop-color="#e8cd6a"/>
+        <stop offset="100%" stop-color="#7fa8ee"/>
+      </linearGradient>
+    </defs>
+  </svg>
+  <p style="margin:0;">Zé Barbeiro — Rua das Tesouras, 128 · Ter a Dom, 9h às 19h (pausa 12h30–14h)</p>
+  <p style="margin:10px 0 0;"><a href="#" onclick="openOwnerPanel(); return false;" style="color:var(--text-faint); font-size:11px; text-decoration:underline;">Área do barbeiro</a></p>
+</footer>
+
+<div class="owner-overlay" id="ownerOverlay">
+  <div class="owner-panel">
+    <div class="owner-panel-head">
+      <span class="display" style="font-size:17px;">Área do barbeiro</span>
+      <button class="owner-close" onclick="closeOwnerPanel()" aria-label="Fechar">✕</button>
+    </div>
+
+    <div id="ownerGate">
+      <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">Digite a senha para gerenciar os agendamentos.</p>
+      <input type="password" id="ownerPassword" placeholder="Senha" style="margin-bottom:8px;" onkeydown="if(event.key==='Enter') submitOwnerPassword();">
+      <div class="error-msg" id="ownerPassError">Senha incorreta.</div>
+      <button class="btn-primary" style="width:100%; justify-content:center; margin-top:10px;" onclick="submitOwnerPassword()">Entrar</button>
+    </div>
+
+    <div id="ownerContent" style="display:none;">
+      <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">Escolha o dia para ver ou liberar horários.</p>
+      <div class="days" id="ownerDaysRow" style="margin-bottom:20px;"></div>
+
+      <div id="ownerList"></div>
+
+      <div style="margin-top:22px; padding-top:18px; border-top:1px solid var(--line);">
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">Bloquear um horário manualmente (sem cliente)</p>
+        <div style="display:flex; gap:8px;">
+          <select id="ownerBlockTime" style="flex:1; background:var(--bg-raised); border:1px solid var(--line); color:var(--text); padding:10px; border-radius:2px; font-family:'Manrope',sans-serif; font-size:13px;"></select>
+          <button class="btn-ghost" onclick="addManualBlock()">Bloquear</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SERVICES = [
+  { id:'corte', num:'Nº 001', name:'Corte de cabelo', desc:'Tesoura e máquina, acabamento na navalha.', price:40, dur:'30 min' },
+  { id:'barba', num:'Nº 002', name:'Barba', desc:'Toalha quente, navalha e hidratação.', price:25, dur:'20 min' },
+  { id:'corte_barba', num:'Nº 003', name:'Corte + Barba', desc:'O clássico completo, cabelo e barba no mesmo horário.', price:60, dur:'50 min' },
+  { id:'sobrancelha', num:'Nº 004', name:'Sobrancelha', desc:'Design e alinhamento na navalha.', price:15, dur:'10 min' },
+  { id:'corte_sobrancelha', num:'Nº 005', name:'Corte + Sobrancelha', desc:'Cabelo alinhado e sobrancelha aparada.', price:50, dur:'40 min' },
+  { id:'combo', num:'Nº 006', name:'Combo completo', desc:'Corte, barba e sobrancelha — tudo em uma sessão.', price:70, dur:'60 min' },
+];
+
+// Número do WhatsApp da barbearia (troque pelo número real, com DDI+DDD, só dígitos)
+const WHATSAPP_NUMBER = '5500000000000';
+
+// Senha da área do barbeiro (troque por uma senha real sua)
+const OWNER_PASSWORD = 'zebarbeiro2026';
+let ownerUnlocked = false;
+let ownerDayIdx = 0;
+
+const BARBERS = [
+  { id:'joao', name:'João Cruzeiro', role:'Especialista em navalha', initials:'JC' },
+  { id:'marcos', name:'Marcos Vieira', role:'Cortes modernos e fade', initials:'MV' },
+  { id:'sem_preferencia', name:'Sem preferência', role:'Primeiro barbeiro livre', initials:'—' },
+];
+
+const state = { service:null, barber:null, dayIndex:null, dayKey:null, dayLabel:null, time:null, step:1 };
+
+function renderTickets(containerId){
+  const grid = document.getElementById(containerId);
+  grid.innerHTML = SERVICES.map(s => `
+    <div class="ticket" data-id="${s.id}" onclick="selectService('${s.id}')">
+      <div class="check">✓</div>
+      <div class="num">${s.num}</div>
+      <h3>${s.name}</h3>
+      <div class="desc">${s.desc}</div>
+      <div class="meta">
+        <span class="price">R$ ${s.price}</span>
+        <span class="dur">${s.dur}</span>
+      </div>
+    </div>
+  `).join('');
+}
+renderTickets('ticketsGridStep');
+
+function selectService(id){
+  state.service = SERVICES.find(s => s.id === id);
+  document.querySelectorAll('.ticket').forEach(el => {
+    el.classList.toggle('selected', el.dataset.id === id);
+  });
+  updateNextButton();
+}
+
+function renderBarbers(){
+  const grid = document.getElementById('barbersGrid');
+  grid.innerHTML = BARBERS.map(b => `
+    <div class="barber-card" data-id="${b.id}" onclick="selectBarber('${b.id}')">
+      <div class="barber-avatar">${b.initials}</div>
+      <div>
+        <div class="barber-name">${b.name}</div>
+        <div class="barber-role">${b.role}</div>
+      </div>
+    </div>
+  `).join('');
+}
+renderBarbers();
+
+function selectBarber(id){
+  state.barber = BARBERS.find(b => b.id === id);
+  document.querySelectorAll('.barber-card').forEach(el => {
+    el.classList.toggle('selected', el.dataset.id === id);
+  });
+  updateNextButton();
+}
+
+const WEEKDAYS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const MONTHS = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+const days = [];
+const today = new Date();
+for(let i=0; i<10 && days.length<7; i++){
+  const d = new Date(today);
+  d.setDate(today.getDate() + i);
+  days.push(d);
+}
+function renderDays(){
+  const row = document.getElementById('daysRow');
+  row.innerHTML = days.map((d, idx) => {
+    const closed = d.getDay() === 1;
+    return `
+      <div class="day ${closed ? 'closed' : ''}" data-idx="${idx}" onclick="${closed ? '' : `selectDay(${idx})`}">
+        <div class="dow">${WEEKDAYS[d.getDay()]}</div>
+        <div class="dom">${d.getDate()}</div>
+        <div class="mon">${MONTHS[d.getMonth()]}</div>
+      </div>
+    `;
+  }).join('');
+}
+renderDays();
+
+function dayKeyFor(idx){
+  const d = days[idx];
+  return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+}
+
+function selectDay(idx){
+  state.dayIndex = idx;
+  const d = days[idx];
+  state.dayKey = dayKeyFor(idx);
+  state.dayLabel = `${WEEKDAYS[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+  document.querySelectorAll('.day').forEach(el => {
+    el.classList.toggle('selected', Number(el.dataset.idx) === idx);
+  });
+  document.getElementById('chosenDayLabel').textContent = state.dayLabel;
+  renderSlots(idx);
+  updateNextButton();
+}
+
+const LUNCH_START = '12:30';
+const LUNCH_END = '14:00';
+
+function showStorageWarning(msg){
+  let el = document.getElementById('storageWarning');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'storageWarning';
+    el.style.cssText = 'position:fixed; top:0; left:0; right:0; z-index:999; background:#e07a7a; color:#1a0303; font-family:Manrope,sans-serif; font-size:13px; padding:10px 16px; text-align:center;';
+    document.body.prepend(el);
+  }
+  el.textContent = msg;
+}
+
+async function getDayEntries(dayKey){
+  if(!window.storage){
+    showStorageWarning('Este navegador/app não tem suporte ao armazenamento do agendamento — os horários não vão aparecer nem salvar. Abra pelo link do artifact no app/site oficial.');
+    return [];
+  }
+  try{
+    const res = await window.storage.get(`taken:${dayKey}`, true);
+    return res ? JSON.parse(res.value) : [];
+  }catch(err){
+    // Chave inexistente ainda não é erro real — só significa "nenhum horário salvo".
+    if(err && /not found|404/i.test(String(err.message || err))){
+      return [];
+    }
+    console.error('Não foi possível carregar os horários', err);
+    showStorageWarning('Não foi possível carregar os horários agora. Verifique sua conexão e tente novamente.');
+    return [];
+  }
+}
+
+async function saveDayEntries(dayKey, entries){
+  if(!window.storage){
+    showStorageWarning('Este navegador/app não tem suporte ao armazenamento do agendamento — o horário não foi salvo.');
+    return;
+  }
+  try{
+    await window.storage.set(`taken:${dayKey}`, JSON.stringify(entries), true);
+  }catch(err){
+    console.error('Não foi possível salvar os horários', err);
+    showStorageWarning('Não foi possível salvar esse horário agora. Tente novamente em instantes.');
+  }
+}
+
+async function markSlotAsTaken(dayKey, entry){
+  if(!dayKey || !entry || !entry.time) return;
+  const current = await getDayEntries(dayKey);
+  if(!current.some(e => e.time === entry.time)) current.push(entry);
+  await saveDayEntries(dayKey, current);
+}
+
+async function releaseSlot(dayKey, time){
+  const current = await getDayEntries(dayKey);
+  const next = current.filter(e => e.time !== time);
+  await saveDayEntries(dayKey, next);
+  if(state.dayIndex !== null && dayKeyFor(state.dayIndex) === dayKey) renderSlots(state.dayIndex);
+  renderOwnerList();
+}
+
+function buildWorkingTimes(){
+  const times = [];
+  for(let h=9; h<19; h++){
+    times.push(`${String(h).padStart(2,'0')}:00`);
+    times.push(`${String(h).padStart(2,'0')}:30`);
+  }
+  return times.filter(t => t < LUNCH_START || t >= LUNCH_END);
+}
+
+async function renderSlots(dayIdx){
+  const slotsGrid = document.getElementById('slotsGrid');
+  const dayKey = dayKeyFor(dayIdx);
+  const workingTimes = buildWorkingTimes();
+  state.time = null;
+  const lunchChip = `<div class="slot" style="grid-column:1/-1; cursor:default; color:var(--text-faint); border-style:dashed; background:transparent;" aria-hidden="true">— Pausa para almoço · 12h30 às 14h —</div>`;
+
+  const renderWith = (taken) => {
+    slotsGrid.innerHTML = workingTimes.map((t, i) => {
+      const chip = `<div class="slot ${taken.has(t) ? 'taken' : ''}" data-time="${t}" onclick="${taken.has(t) ? '' : `selectTime('${t}')`}">${t}</div>`;
+      const nextIsAfterLunch = i < workingTimes.length - 1 && workingTimes[i+1] === LUNCH_END;
+      return chip + (nextIsAfterLunch ? lunchChip : '');
+    }).join('');
+  };
+
+  renderWith(new Set());
+  const entries = await getDayEntries(dayKey);
+  const taken = new Set(entries.map(e => e.time));
+  if(state.dayIndex === dayIdx) renderWith(taken);
+}
+
+function selectTime(t){
+  state.time = t;
+  document.querySelectorAll('.slot').forEach(el => {
+    el.classList.toggle('selected', el.dataset.time === t);
+  });
+  updateNextButton();
+}
+
+const errName = document.getElementById('errName');
+const errPhone = document.getElementById('errPhone');
+
+function validateStep4(){
+  const name = document.getElementById('fName').value.trim();
+  const phone = document.getElementById('fPhone').value.trim();
+  let ok = true;
+  if(!name){ errName.style.display='block'; ok=false; } else { errName.style.display='none'; }
+  if(phone.replace(/\D/g,'').length < 10){ errPhone.style.display='block'; ok=false; } else { errPhone.style.display='none'; }
+  return ok;
+}
+document.getElementById('fName').addEventListener('input', () => { errName.style.display='none'; updateNextButton(); });
+document.getElementById('fPhone').addEventListener('input', () => { errPhone.style.display='none'; updateNextButton(); });
+
+function updateNextButton(){
+  const btn = document.getElementById('btnNext');
+  if(state.step === 1){ btn.disabled = !state.service; }
+  else if(state.step === 2){ btn.disabled = !state.barber; }
+  else if(state.step === 3){ btn.disabled = state.dayIndex === null; }
+  else if(state.step === 4){ btn.disabled = !state.time; }
+  else if(state.step === 5){
+    const name = document.getElementById('fName').value.trim();
+    const phone = document.getElementById('fPhone').value.trim().replace(/\D/g,'');
+    btn.disabled = !(name && phone.length >= 10);
+  }
+}
+
+function goToStep(n){
+  state.step = n;
+  document.querySelectorAll('.step-tab').forEach(tab => {
+    const s = Number(tab.dataset.step);
+    tab.classList.toggle('active', s === n);
+    tab.classList.toggle('done', s < n);
+  });
+  document.querySelectorAll('.panel').forEach(p => {
+    p.classList.toggle('active', Number(p.dataset.panel) === n);
+  });
+  document.getElementById('btnBack').style.visibility = n === 1 ? 'hidden' : 'visible';
+  document.getElementById('btnNext').textContent = n === 5 ? 'Confirmar agendamento →' : 'Continuar →';
+  updateNextButton();
+}
+
+document.getElementById('btnBack').addEventListener('click', () => {
+  if(state.step > 1) goToStep(state.step - 1);
+});
+
+document.getElementById('btnNext').addEventListener('click', () => {
+  if(state.step === 5){
+    if(!validateStep4()) return;
+    confirmBooking();
+    return;
+  }
+  if(state.step === 1 && !state.service) return;
+  if(state.step === 2 && !state.barber) return;
+  if(state.step === 3 && state.dayIndex === null) return;
+  if(state.step === 4 && !state.time) return;
+  goToStep(state.step + 1);
+});
+
+function confirmBooking(){
+  const clientName = document.getElementById('fName').value.trim();
+  const clientPhone = document.getElementById('fPhone').value.trim();
+  document.getElementById('ticketService').textContent = state.service.name;
+  document.getElementById('ticketName').textContent = clientName;
+  document.getElementById('ticketBarber').textContent = state.barber.name;
+  document.getElementById('ticketDate').textContent = state.dayLabel;
+  document.getElementById('ticketTime').textContent = state.time;
+  document.getElementById('ticketPrice').textContent = `R$ ${state.service.price}`;
+  document.getElementById('bookingPanels').style.display = 'none';
+  document.getElementById('navButtons').style.display = 'none';
+  document.querySelector('.steps').style.display = 'none';
+  document.getElementById('confirmedBanner').classList.add('active');
+
+  const msg = `Olá! Confirmando meu agendamento na Zé Barbeiro:\n` +
+    `Serviço: ${state.service.name}\n` +
+    `Barbeiro: ${state.barber.name}\n` +
+    `Data: ${state.dayLabel}\n` +
+    `Horário: ${state.time}\n` +
+    `Nome: ${clientName}`;
+  document.getElementById('whatsappLink').href = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
+
+  markSlotAsTaken(state.dayKey, {
+    time: state.time,
+    type: 'booking',
+    service: state.service.name,
+    barber: state.barber.name,
+    name: clientName,
+    phone: clientPhone,
+  });
+}
+
+function openOwnerPanel(){
+  document.getElementById('ownerOverlay').classList.add('active');
+  document.getElementById('ownerPassword').value = '';
+  document.getElementById('ownerPassError').style.display = 'none';
+  if(ownerUnlocked){
+    document.getElementById('ownerGate').style.display = 'none';
+    document.getElementById('ownerContent').style.display = 'block';
+    renderOwnerDayTabs();
+    selectOwnerDay(ownerDayIdx);
+  }else{
+    document.getElementById('ownerGate').style.display = 'block';
+    document.getElementById('ownerContent').style.display = 'none';
+  }
+}
+
+function closeOwnerPanel(){
+  document.getElementById('ownerOverlay').classList.remove('active');
+}
+
+function submitOwnerPassword(){
+  const val = document.getElementById('ownerPassword').value;
+  if(val === OWNER_PASSWORD){
+    ownerUnlocked = true;
+    document.getElementById('ownerGate').style.display = 'none';
+    document.getElementById('ownerContent').style.display = 'block';
+    renderOwnerDayTabs();
+    selectOwnerDay(0);
+  }else{
+    document.getElementById('ownerPassError').style.display = 'block';
+  }
+}
+
+function renderOwnerDayTabs(){
+  const row = document.getElementById('ownerDaysRow');
+  row.innerHTML = days.map((d, idx) => `
+    <div class="day ${idx === ownerDayIdx ? 'selected' : ''}" data-oidx="${idx}" onclick="selectOwnerDay(${idx})">
+      <div class="dow">${WEEKDAYS[d.getDay()]}</div>
+      <div class="dom">${d.getDate()}</div>
+      <div class="mon">${MONTHS[d.getMonth()]}</div>
+    </div>
+  `).join('');
+}
+
+function selectOwnerDay(idx){
+  ownerDayIdx = idx;
+  document.querySelectorAll('#ownerDaysRow .day').forEach(el => {
+    el.classList.toggle('selected', Number(el.dataset.oidx) === idx);
+  });
+  renderOwnerList();
+  populateOwnerBlockTimes();
+}
+
+async function renderOwnerList(){
+  const list = document.getElementById('ownerList');
+  const dayKey = dayKeyFor(ownerDayIdx);
+  const entries = await getDayEntries(dayKey);
+  if(entries.length === 0){
+    list.innerHTML = `<div class="owner-empty">Nenhum horário ocupado nesse dia.</div>`;
+    return;
+  }
+  const sorted = [...entries].sort((a,b) => a.time.localeCompare(b.time));
+  list.innerHTML = sorted.map(e => {
+    if(e.type === 'block'){
+      return `
+        <div class="owner-row">
+          <span class="time">${e.time}</span>
+          <div class="info"><span class="badge block">Bloqueado</span></div>
+          <button class="btn-release" onclick="releaseSlot('${dayKey}', '${e.time}')">Liberar</button>
+        </div>`;
+    }
+    return `
+      <div class="owner-row">
+        <span class="time">${e.time}</span>
+        <div class="info">
+          <span class="name">${e.name || 'Cliente'}</span> <span class="badge">${e.service || ''}</span>
+          <div class="sub">${e.barber || ''}${e.phone ? ' · ' + e.phone : ''}</div>
+        </div>
+        <button class="btn-release" onclick="releaseSlot('${dayKey}', '${e.time}')">Desmarcar</button>
+      </div>`;
+  }).join('');
+}
+
+async function populateOwnerBlockTimes(){
+  const select = document.getElementById('ownerBlockTime');
+  const dayKey = dayKeyFor(ownerDayIdx);
+  const entries = await getDayEntries(dayKey);
+  const taken = new Set(entries.map(e => e.time));
+  const free = buildWorkingTimes().filter(t => !taken.has(t));
+  select.innerHTML = free.map(t => `<option value="${t}">${t}</option>`).join('') || `<option value="">Sem horários livres</option>`;
+}
+
+async function addManualBlock(){
+  const select = document.getElementById('ownerBlockTime');
+  const time = select.value;
+  if(!time) return;
+  const dayKey = dayKeyFor(ownerDayIdx);
+  await markSlotAsTaken(dayKey, { time, type:'block' });
+  renderOwnerList();
+  populateOwnerBlockTimes();
+  if(state.dayIndex === ownerDayIdx) renderSlots(state.dayIndex);
+}
+
+function resetBooking(){
+  state.service = null; state.barber = null; state.dayIndex = null; state.dayKey = null; state.dayLabel = null; state.time = null;
+  document.getElementById('fName').value = '';
+  document.getElementById('fPhone').value = '';
+  document.querySelectorAll('.ticket, .barber-card, .day, .slot').forEach(el => el.classList.remove('selected'));
+  document.getElementById('bookingPanels').style.display = '';
+  document.getElementById('navButtons').style.display = '';
+  document.querySelector('.steps').style.display = '';
+  document.getElementById('confirmedBanner').classList.remove('active');
+  goToStep(1);
+}
+
+goToStep(1);
+
+// Link direto e discreto para o barbeiro: abra o site com ?dono no final do endereço
+// (ex: seusite.com/index.html?dono) que a área dele já abre sozinha.
+if(new URLSearchParams(window.location.search).has('dono')){
+  openOwnerPanel();
+}
+</script>
+
+</body>
+</html>
